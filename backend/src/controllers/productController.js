@@ -1,39 +1,71 @@
 import Product from "../models/Product.js";
-
+import Supplier from "../models/Supplier.js";
 
 export const createProduct = async (req, res) => {
-  try {
-  const { name, category, price, cost, stock, barcode, description } = req.body;
-  
-  
-  const productExists = await Product.findOne({ barcode, user: req.user._id });
-  if (productExists) return res.status(400).json({ message: "El producto ya existe" });
+  console.log("📦 Body recibido:", req.body);
 
-  const product = await Product.create({
-    barcode,
-    description,
-    user: req.user._id,
+  try {
+    const { name, category, price, cost, stock, barcode, description, supplier } = req.body;
+
+    if (!name || !category || !price) {
+      return res.status(400).json({ message: "Faltan campos obligatorios." });
+    }
+
+    // 🚫 Verificar duplicado
+    if (barcode) {
+      const productExists = await Product.findOne({ barcode, user: req.user._id });
+      if (productExists) {
+        return res.status(400).json({ message: "El producto ya existe." });
+      }
+    }
+
+    // ✅ Validar y guardar proveedor
+    let supplierRef = null;
+    if (supplier) {
+      const supplierExists = await Supplier.findOne({ _id: supplier, user: req.user._id });
+      if (!supplierExists) {
+        return res.status(404).json({ message: "Proveedor no encontrado." });
+      }
+      supplierRef = supplierExists._id;
+    }
+
+    // ✅ Crear producto con proveedor si existe
+    const product = await Product.create({
+      name,
+      category,
+      price,
+      cost: cost || 0,
+      stock: stock || 0,
+      barcode: barcode || null,
+      description,
+      supplier: supplierRef,
+      user: req.user._id,
     });
-    
-    
-    res.status(201).json(product);
-    } catch (error) {
+
+    // 👇 Importante: devolvemos el producto populado
+    const populatedProduct = await Product.findById(product._id).populate("supplier", "name");
+    res.status(201).json(populatedProduct);
+  } catch (error) {
+    console.error("❌ Error al crear producto:", error);
     res.status(500).json({ message: error.message });
-    }
-    };
+  }
+};
+
     
-    
-    export const getProducts = async (req, res) => {
-    try {
-    const products = await Product.find({ user: req.user._id }).sort({ createdAt: -1 });
+export const getProducts = async (req, res) => {
+  try {
+    const products = await Product.find({ user: req.user._id })
+      .populate("supplier", "name phone email")
+      .sort({ createdAt: -1 });
+
     res.json(products);
-    } catch (error) {
+  } catch (error) {
     res.status(500).json({ message: error.message });
-    }
-    };
+  }
+};
+
     
-    
-    export const getProductById = async (req, res) => {
+export const getProductById = async (req, res) => {
     try {
     const product = await Product.findOne({ _id: req.params.id, user: req.user._id });
     if (!product) return res.status(404).json({ message: "Producto no encontrado" });
@@ -44,7 +76,7 @@ export const createProduct = async (req, res) => {
     };
     
     
-    export const updateProduct = async (req, res) => {
+export const updateProduct = async (req, res) => {
     try {
     const product = await Product.findOne({ _id: req.params.id, user: req.user._id });
     if (!product) return res.status(404).json({ message: "Producto no encontrado" });
@@ -59,7 +91,7 @@ export const createProduct = async (req, res) => {
     };
     
     
-    export const deleteProduct = async (req, res) => {
+export const deleteProduct = async (req, res) => {
     try {
     const product = await Product.findOne({ _id: req.params.id, user: req.user._id });
     if (!product) return res.status(404).json({ message: "Producto no encontrado" });

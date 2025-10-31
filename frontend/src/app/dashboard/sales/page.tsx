@@ -1,11 +1,18 @@
-export default function PlaceholderPage() {
-    return (
-      <section className="p-6">
-        <h1 className="text-2xl font-semibold mb-4">Sección en construcción 🛠️</h1>
-        <p className="text-gray-600">
-          Pronto podrás gestionar esta área desde el panel de Controlia.
-        </p>
-      </section>
-    );
-  }
-  
+
+import { Plus } from "lucide-react";
+import HistorySales from "./historySales";
+import { Button } from "../components/button";
+
+export default function VentasPage() {
+  return (
+    <section className="p-6">
+      <div className="flex justify-between items-center mb-6">
+        <h1 className="text-2xl font-semibold">Ventas</h1>
+        <Button className="flex items-center gap-2">
+          <Plus size={18} /> Nueva venta
+        </Button>
+      </div>
+      <HistorySales />
+    </section>
+  );
+}

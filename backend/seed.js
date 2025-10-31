@@ -1,12 +1,15 @@
 import dotenv from "dotenv";
+import mongoose from "mongoose";
 import connectDB from "./src/config/db_temp.js";
 import User from "./src/models/User.js";
 import Product from "./src/models/Product.js";
 import Client from "./src/models/Client.js";
 import Sale from "./src/models/Sale.js";
 import Supplier from "./src/models/Supplier.js";
+import DailySale from "./src/models/DailySale.js"; // ⚡ nuevo modelo
 
 dotenv.config();
+
 await connectDB();
 
 try {
@@ -16,15 +19,16 @@ try {
     Client.deleteMany(),
     Sale.deleteMany(),
     Supplier.deleteMany(),
+    DailySale.deleteMany(), // 🧹 limpiar ventas diarias también
   ]);
 
-  // Obtener usuario actual
+  // 🔍 Buscar usuario principal
   const user = await User.findOne({ email: "jonathan@controlia.com" });
   if (!user) throw new Error("❌ No se encontró el usuario Jonathan");
 
   console.log("👤 Usuario encontrado:", user.email);
 
-  // Crear productos
+  // 🛒 Crear productos
   const products = await Product.insertMany([
     {
       name: "Coca-Cola 500ml",
@@ -48,7 +52,7 @@ try {
     },
   ]);
 
-  // Crear clientes
+  // 👥 Crear clientes
   const clients = await Client.insertMany([
     {
       name: "Carlos Pérez",
@@ -66,7 +70,7 @@ try {
     },
   ]);
 
-  // Crear proveedor
+  // 🚚 Crear proveedor
   const supplier = await Supplier.create({
     name: "Distribuidora Norte",
     phone: "1144445555",
@@ -76,27 +80,49 @@ try {
     user: user._id,
   });
 
-  // Crear venta
-  const sale = await Sale.create({
-    user: user._id,
-    products: [
-      { product: products[0]._id, quantity: 2, price: products[0].price },
-      { product: products[1]._id, quantity: 1, price: products[1].price },
-    ],
-    total: products[0].price * 2 + products[1].price,
-    paymentMethod: "efectivo",
+  // 🧾 Crear ventas del día
+  const sales = await Sale.insertMany([
+    {
+      user: user._id,
+      products: [
+        { product: products[0]._id, quantity: 2, price: products[0].price },
+        { product: products[1]._id, quantity: 1, price: products[1].price },
+      ],
+      total: products[0].price * 2 + products[1].price,
+      paymentMethod: "efectivo",
+    },
+    {
+      user: user._id,
+      products: [{ product: products[1]._id, quantity: 3, price: products[1].price }],
+      total: products[1].price * 3,
+      paymentMethod: "mercado pago",
+    },
+  ]);
+
+  // 📆 Crear registro DailySale del día
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+
+  const dailySale = await DailySale.create({
+    date: today,
+    totalSalesAmount: sales.reduce((acc, s) => acc + s.total, 0),
+    totalOperations: sales.length,
+    sales: sales.map((s) => s._id),
   });
 
   console.log("✅ Datos generados correctamente:");
-  console.log({
-    products: products.length,
-    clients: clients.length,
-    suppliers: 1,
-    sales: 1,
+  console.table({
+    Productos: products.length,
+    Clientes: clients.length,
+    Proveedores: 1,
+    Ventas: sales.length,
+    TotalDiario: `$${dailySale.totalSalesAmount}`,
   });
 
-  process.exit();
+  await mongoose.connection.close();
+  process.exit(0);
 } catch (error) {
   console.error("❌ Error al generar datos:", error);
+  await mongoose.connection.close();
   process.exit(1);
 }

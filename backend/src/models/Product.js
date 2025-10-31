@@ -10,6 +10,11 @@ cost: { type: Number, required: true },
 stock: { type: Number, required: true, default: 0 },
 barcode: { type: String, unique: true },
 description: String,
+supplier: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: "Supplier",
+    required: false,
+  },
 user: {
 type: mongoose.Schema.Types.ObjectId,
 ref: "User",
